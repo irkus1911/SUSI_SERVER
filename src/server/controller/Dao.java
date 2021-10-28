@@ -25,24 +25,25 @@ import lib.interfaces.Logicable;
 
 /**
  * Esta clase maneja la logica de los metodos de sign in y signUp
+ *
  * @author Irkus de la Fuente
  */
 public class Dao implements Logicable {
-    
-    
-    public Dao(){
-        this.pool=getInstance();
+        private final static Logger logger=Logger.getLogger("server.controller.Dao");
+    public Dao() {
+        this.pool = getInstance();
     }
     private Connection con;
     private Pool pool;
     private ResultSet rs;
     private PreparedStatement stmt;
-    
+    private final String insertarUsuario = "insert into user (login,email,fullname,status,privilege,password,lastPasswordChange) values(?,?,?,?,?,?,?)";
     private final String buscarUsuario = "select * from user where login=?";
     private final String procedimientoSignIn = "CALL `last_signs_in`('?')";
 
     /**
      * Este metodo loguea a un usuario
+     *
      * @param user
      * @return objeto User
      * @throws IncorrectUserException
@@ -53,12 +54,23 @@ public class Dao implements Logicable {
      */
     @Override
     public User signIn(User user) throws IncorrectUserException, IncorrectPasswordException, UserDontExistException, PasswordDontMatchException, ConnectException {
+       logger.info("SignIn started");
         User usu = user;
+        User usua;
+        con = pool.getConnection();
+
+        usua = buscarUser(usu, con);
+        if (usua == null) {
+            throw new UserDontExistException("Usuario no existe");
+
+        }
+        pool.releaseConnection(con);
         return usu;
     }
 
     /**
      * Este metodo registra un usuario en la base de datos
+     *
      * @param user
      * @return objeto User
      * @throws IncorrectUserException
@@ -70,26 +82,57 @@ public class Dao implements Logicable {
      */
     @Override
     public User signUp(User user) throws IncorrectUserException, IncorrectPasswordException, IncorrectEmailException, UserExistException, PasswordDontMatchException, ConnectException {
+        logger.info("SignUp started");
         User usu = user;
+        User usua;
+        con = pool.getConnection();
+        usua = buscarUser(usu, con);
+        if (usua == null) {
+            try {
+                //login,email,fullname,status,privilege,password,lastPasswordChange
+                stmt = con.prepareStatement(insertarUsuario);
+                stmt.setString(1, usu.getLogin());
+                stmt.setString(2, usu.getEmail());
+                stmt.setString(3, usu.getFullName());
+                stmt.setString(4, usu.getStatus().toString());
+                stmt.setString(5, usu.getPrivilege().toString());
+                stmt.setString(6, usu.getPassword());
+                stmt.setTimestamp(7, usu.getLastPasswordChange());
+                stmt.executeQuery();
+                usua = buscarUser(usu, con);
+                if (usua != null) {
+                    stmt = con.prepareStatement(procedimientoSignIn);
+                    stmt.setString(1, usu.getLogin());
 
+                }
+            } catch (ConnectException ex) {
+
+            } catch (SQLException ex) {
+                Logger.getLogger(Dao.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            throw new UserExistException("Usuario ya existe");
+        }
+        pool.releaseConncection(con);
         return usu;
     }
 
     /**
      * Este metodo busca un usuario determinado y lo devuelve
+     *
      * @param user
      * @return objeto User
      */
-    private User buscarUser(User user) {
+    private User buscarUser(User user, Connection con) {
+       logger.info("Finf User started");
         User usu = user;
-     
-        con=pool.getConnection();
+
         try {
-            stmt=con.prepareStatement(buscarUsuario);
+            stmt = con.prepareStatement(buscarUsuario);
             stmt.setString(1, usu.getLogin());
-            rs=stmt.executeQuery();
-            usu=null;
-            while(rs.next()){
+            rs = stmt.executeQuery();
+            usu = null;
+            while (rs.next()) {
                 usu.setId(rs.getInt("id"));
                 usu.setLogin(rs.getString("login"));
                 usu.setEmail(rs.getString("email"));
@@ -98,18 +141,11 @@ public class Dao implements Logicable {
                 usu.setPrivilege(UserPrivilege.USER);
                 usu.setStatus(UserStatus.ENABLED);
             }
-            
+
         } catch (SQLException ex) {
             Logger.getLogger(Dao.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        
-        
-        
-        
-        pool.releaseConnection(con);
-        
-        
+
         return usu;
     }
 
