@@ -5,29 +5,26 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ResourceBundle;
 import java.util.Stack;
-import java.util.TooManyListenersException;
 import lib.exceptions.ConnectException;
 
 /**
- * Esta clase pretende crear conexiones con la base de datos. Limitando las
- * conexiones mediante una coleccion.
- *
+ * Esta clase pretende crear conexiones con la base de datos, estas conexiones
+ * puedes ser reutilizadas por los diferentes usuarios.
+ * 
  * @author Steven Arce
  */
 public class Pool {
 
     private static Pool instance;
     private static Stack<Connection> pool = new Stack<>();
-    private static int MAX_POOL_SIZE = 10;
     private Connection con;
     private String driver;
     private String url;
     private String user;
     private String passwd;
     private ResourceBundle configFile;
-
     /**
-     * Para que solo haya una sola instancia, el constructor es sprivado para
+     * Para que solo haya una sola instancia, el constructor es privado para
      * impedir la creacion de nuevas instancias.
      */
     private Pool() {
@@ -42,8 +39,8 @@ public class Pool {
      * solo haya una unica instacia de esta misma.
      *
      * @return Si el Pool ya fue instanciado anteriormente, devuelve la
-     * referencia al creado anteriormente. De lo contrario, crea devuelve una
-     * nueva instancia.
+     * referencia al creado anteriormente. De lo contrario, crea una nueva 
+     * instancia.
      */
     public static Pool getInstance() {
         if (instance == null) {
@@ -51,28 +48,33 @@ public class Pool {
         }
         return instance;
     }
-
     /**
      * Este metodo pretende obtener una conexion con la base de datos y añadir
-     * la conexion a la coleccion de pool.
+     * la conexion a la coleccion pool.
      *
-     * @return 
-     * @throws java.sql.SQLException 
-     * @throws lib.exceptions.ConnectException 
+     * @return Devuelve una conexion de la coleccion pool.
+     * @throws lib.exceptions.ConnectException Si hay un error con el acceso
+     * a la base de datos.
      */
-    public synchronized Connection getConnection() throws SQLException, ConnectException {     
+    public synchronized Connection getConnection() throws ConnectException {
         if (pool.isEmpty()) {
-            con = DriverManager.getConnection(this.url, this.user, this.passwd);
+            try {
+                con = DriverManager.getConnection(this.url, this.user, this.passwd);
+            } catch (SQLException ex) {
+                throw new ConnectException("Error al crear una conexion con la base de datos");
+            }
             pool.push(con);
         }
         return pool.pop();
     }
     /**
+     * Este metodo pretende recoger la conexion del usuario a fin de dejarlo 
+     * libre, para poder ser reutilizado.
      * 
-     * @param con 
+     * @param con Conexion devuelta por el usuario.
      */
     public synchronized void releaseConnection(Connection con) {
         pool.push(con);
     }
-    
+
 }
