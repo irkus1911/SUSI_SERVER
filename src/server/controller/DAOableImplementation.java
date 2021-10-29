@@ -6,6 +6,7 @@
 package server.controller;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,18 +29,21 @@ import lib.interfaces.Logicable;
  *
  * @author Irkus de la Fuente
  */
-public class Dao implements Logicable {
-        private final static Logger logger=Logger.getLogger("server.controller.Dao");
-    public Dao() {
-        this.pool = getInstance();
+public class DAOableImplementation implements Logicable {
+
+    private final static Logger logger = Logger.getLogger("server.controller.Dao");
+
+    public DAOableImplementation() {
+
     }
     private Connection con;
-    private Pool pool;
+    // private Pool pool;
     private ResultSet rs;
     private PreparedStatement stmt;
+
     private final String insertarUsuario = "insert into user (login,email,fullname,status,privilege,password,lastPasswordChange) values(?,?,?,?,?,?,?)";
     private final String buscarUsuario = "select * from user where login=?";
-    private final String procedimientoSignIn = "CALL `last_signs_in`('?')";
+    private final String procedimientoSignIn = "CALL `last_signs_in`(?)";
 
     /**
      * Este metodo loguea a un usuario
@@ -52,19 +56,49 @@ public class Dao implements Logicable {
      * @throws PasswordDontMatchException
      * @throws ConnectException
      */
+    private Connection getConnection() throws ConnectException {
+        Connection con = null;
+        try {
+            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/susidb?serverTimezone=Europe/Madrid&useSSL=false", "root", "abcd*1234");
+            //   this.pool = getInstance();
+        } catch (SQLException ex) {
+            throw new ConnectException("error de conexion a base de datos");
+        }
+        return con;
+    }
+
     @Override
     public User signIn(User user) throws IncorrectUserException, IncorrectPasswordException, UserDontExistException, PasswordDontMatchException, ConnectException {
-       logger.info("SignIn started");
+        logger.info("SignIn started");
         User usu = user;
         User usua;
-        con = pool.getConnection();
+        con = getConnection();
+        //   con = pool.getConnection();
 
-        usua = buscarUser(usu, con);
+        usua = buscarUser(usu);
         if (usua == null) {
             throw new UserDontExistException("Usuario no existe");
 
+        } else {
+            if (usu.getPassword().equals(usua.getPassword())) {
+                try {
+                    stmt = con.prepareStatement(procedimientoSignIn);
+                    stmt.setString(1, usu.getLogin());
+                    stmt.executeUpdate();
+                } catch (SQLException ex) {
+                  throw new ConnectException("error de conexion a base de datos");
+                }
+            } else {
+                throw new PasswordDontMatchException("Contraseña incorrecta");
+            }
+
         }
-        pool.releaseConnection(con);
+        try {
+            con.close();
+        } catch (SQLException ex) {
+            throw new ConnectException("error de conexion a base de datos");
+        }
+        //  pool.releaseConnection(con);
         return usu;
     }
 
@@ -85,9 +119,10 @@ public class Dao implements Logicable {
         logger.info("SignUp started");
         User usu = user;
         User usua;
-        con = pool.getConnection();
-        usua = buscarUser(usu, con);
-        if (usua == null) {
+        con = getConnection();
+        // con = pool.getConnection();
+        usua = buscarUser(usu);
+        if (usua==null) {
             try {
                 //login,email,fullname,status,privilege,password,lastPasswordChange
                 stmt = con.prepareStatement(insertarUsuario);
@@ -98,22 +133,26 @@ public class Dao implements Logicable {
                 stmt.setString(5, usu.getPrivilege().toString());
                 stmt.setString(6, usu.getPassword());
                 stmt.setTimestamp(7, usu.getLastPasswordChange());
-                stmt.executeQuery();
-                usua = buscarUser(usu, con);
-                if (usua != null) {
-                    stmt = con.prepareStatement(procedimientoSignIn);
-                    stmt.setString(1, usu.getLogin());
+                stmt.executeUpdate();
 
-                }
+                stmt = con.prepareStatement(procedimientoSignIn);
+                stmt.setString(1, usu.getLogin());
+                stmt.executeUpdate();
+
             } catch (ConnectException ex) {
-
+                System.out.println("error conexion");
             } catch (SQLException ex) {
-                Logger.getLogger(Dao.class.getName()).log(Level.SEVERE, null, ex);
+               throw new ConnectException("error de conexion a base de datos");
             }
         } else {
             throw new UserExistException("Usuario ya existe");
         }
-        pool.releaseConncection(con);
+        try {
+            con.close();
+        } catch (SQLException ex) {
+            throw new ConnectException("error de conexion a base de datos");
+        }
+        //  pool.releaseConncection(con);
         return usu;
     }
 
@@ -123,29 +162,36 @@ public class Dao implements Logicable {
      * @param user
      * @return objeto User
      */
-    private User buscarUser(User user, Connection con) {
-       logger.info("Finf User started");
+    private User buscarUser(User user) throws ConnectException {
+        logger.info("Find User started");
+        con = getConnection();
         User usu = user;
-
+      
+      
         try {
+            
             stmt = con.prepareStatement(buscarUsuario);
             stmt.setString(1, usu.getLogin());
             rs = stmt.executeQuery();
-            usu = null;
-            while (rs.next()) {
-                usu.setId(rs.getInt("id"));
-                usu.setLogin(rs.getString("login"));
-                usu.setEmail(rs.getString("email"));
-                usu.setPassword(rs.getString("password"));
-                usu.setFullName(rs.getString("fullName"));
-                usu.setPrivilege(UserPrivilege.USER);
-                usu.setStatus(UserStatus.ENABLED);
-            }
+            
+             usu=null;
+                 while (rs.next()) {
+                     
+                    usu=new User();
+                     usu.setId(rs.getInt("id"));
+                     usu.setLogin(rs.getString("login"));
+                     usu.setEmail(rs.getString("email"));
+                     usu.setPassword(rs.getString("password"));
+                     usu.setFullName(rs.getString("fullName"));
+                     usu.setPrivilege(UserPrivilege.USER);
+                     usu.setStatus(UserStatus.ENABLED);
+                     
+                 }
 
         } catch (SQLException ex) {
-            Logger.getLogger(Dao.class.getName()).log(Level.SEVERE, null, ex);
+           throw new ConnectException("error de conexion a base de datos");
         }
-
+        
         return usu;
     }
 
