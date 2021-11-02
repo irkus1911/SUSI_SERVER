@@ -10,54 +10,45 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import lib.message.Message;
+import server.serverSocket.Hilo;
 
 /**
  *
- * @author 2dam
+ * @author Adrian Franco
  */
 public class Server {
-
-    /**
-     * @param args the command line arguments
-     */
-    private final static int PORT = 9999; 
+    
+    private ResourceBundle configFile;
+    private final static int PORT = 5001;
+    private String port;
+    private int maxConnection;
     public static void main(String[] args) {
         // TODO code application logic here
-            ServerSocket serverSocket = null;
-    ObjectInputStream ois;
-    ObjectOutputStream oos;
-    
+        ServerSocket serverSocket = null;
+
         try {
             serverSocket = new ServerSocket(PORT);
             Socket clientSocket = null;
-            
-            while(true){
+
+            while (true) {
                 clientSocket = serverSocket.accept();
+                Hilo hilo = new Hilo(clientSocket);
+                hilo.start();
                 
-                ois = new ObjectInputStream(clientSocket.getInputStream());
-                oos = new ObjectOutputStream(clientSocket.getOutputStream());
-                
-                Message msg = (Message) ois.readObject();
-                
-                String opc = msg.getMsg().toString();
-                switch(opc){
-                    case "SIGNUP":
-                        
-                        break;
-                    case "SIGNIN":
-                        
-                        break;
-                }
+               
             }
         } catch (IOException ex) {
-            
-            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (ClassNotFoundException ex) {
+
             Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+    public void readFile(){
+        this.configFile=ResourceBundle.getBundle("server.serverSocket.ServerProperties");
+        this.port=this.configFile.getString("PORT");
+        this.maxConnection=Integer.parseInt(this.configFile.getString("MAXCONNECTIONS"));
+    }
 }
