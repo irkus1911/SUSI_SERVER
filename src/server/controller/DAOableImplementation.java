@@ -23,6 +23,7 @@ import lib.exceptions.PasswordDontMatchException;
 import lib.exceptions.UserDontExistException;
 import lib.exceptions.UserExistException;
 import lib.interfaces.Logicable;
+import server.pool.Pool;
 
 /**
  * Esta clase maneja la logica de los metodos de sign in y signUp
@@ -142,7 +143,7 @@ public class DAOableImplementation implements Logicable {
         } catch (SQLException ex) {
             throw new ConnectException("error de conexion a base de datos");
         }
-          pool.releaseConncection(con);
+          pool.releaseConnection(con);
         return usu;
     }
 
@@ -154,7 +155,7 @@ public class DAOableImplementation implements Logicable {
      */
     private User buscarUser(User user) throws ConnectException {
         logger.info("Find User started");
-        con = getConnection();
+        con = pool.getConnection();
         User usu = user;
       
       
@@ -181,7 +182,7 @@ public class DAOableImplementation implements Logicable {
         } catch (SQLException ex) {
            throw new ConnectException("error de conexion a base de datos");
         }
-        
+        pool.releaseConnection(con);
         return usu;
     }
 
