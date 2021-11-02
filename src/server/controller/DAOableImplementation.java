@@ -37,7 +37,7 @@ public class DAOableImplementation implements Logicable {
 
     }
     private Connection con;
-    // private Pool pool;
+    private Pool pool;
     private ResultSet rs;
     private PreparedStatement stmt;
 
