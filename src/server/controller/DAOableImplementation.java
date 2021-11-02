@@ -56,29 +56,19 @@ public class DAOableImplementation implements Logicable {
      * @throws PasswordDontMatchException
      * @throws ConnectException
      */
-    private Connection getConnection() throws ConnectException {
-        Connection con = null;
-        try {
-            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/susidb?serverTimezone=Europe/Madrid&useSSL=false", "root", "abcd*1234");
-            //   this.pool = getInstance();
-        } catch (SQLException ex) {
-            throw new ConnectException("error de conexion a base de datos");
-        }
-        return con;
-    }
-
+   
     @Override
     public User signIn(User user) throws IncorrectUserException, IncorrectPasswordException, UserDontExistException, PasswordDontMatchException, ConnectException {
         logger.info("SignIn started");
         User usu = user;
         User usua;
-        con = getConnection();
-        //   con = pool.getConnection();
+        
+          con = pool.getConnection();
 
         usua = buscarUser(usu);
         if (usua == null) {
             throw new UserDontExistException("Usuario no existe");
-
+           
         } else {
             if (usu.getPassword().equals(usua.getPassword())) {
                 try {
@@ -98,7 +88,7 @@ public class DAOableImplementation implements Logicable {
         } catch (SQLException ex) {
             throw new ConnectException("error de conexion a base de datos");
         }
-        //  pool.releaseConnection(con);
+        pool.releaseConnection(con);
         return usu;
     }
 
@@ -119,8 +109,8 @@ public class DAOableImplementation implements Logicable {
         logger.info("SignUp started");
         User usu = user;
         User usua;
-        con = getConnection();
-        // con = pool.getConnection();
+       
+        con = pool.getConnection();
         usua = buscarUser(usu);
         if (usua==null) {
             try {
@@ -152,7 +142,7 @@ public class DAOableImplementation implements Logicable {
         } catch (SQLException ex) {
             throw new ConnectException("error de conexion a base de datos");
         }
-        //  pool.releaseConncection(con);
+          pool.releaseConncection(con);
         return usu;
     }
 
