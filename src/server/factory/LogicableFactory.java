@@ -6,6 +6,7 @@
 package server.factory;
 
 import lib.interfaces.Logicable;
+import server.controller.DAOableImplementation;
 
 /**
  *
